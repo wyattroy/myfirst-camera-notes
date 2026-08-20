@@ -330,6 +330,17 @@ p.hero-body { font-size: 1.02rem; line-height: 1.7; }
 }
 .field-fix .field-label { color: var(--c-fix); }
 
+/* Inline links in body copy */
+.doc p a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(85,120,160,0.38);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--transition-micro), color var(--transition-micro);
+}
+.doc p a:hover { text-decoration-color: var(--color-accent); color: #486688; }
+
 .subfields { margin-top: var(--space-3); display: grid; gap: var(--space-2); }
 .subfield { border-left: 2px solid var(--color-border); padding-left: var(--space-2); }
 .subfield-label { font-size: 0.65rem; font-weight: 500; letter-spacing: 0.13em; text-transform: uppercase; color: var(--color-text); margin-bottom: 4px; }
