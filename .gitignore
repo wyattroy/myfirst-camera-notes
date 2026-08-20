@@ -1,0 +1,9 @@
+# Source of truth for the document, kept out of the published repo
+# so the plaintext never lands on GitHub. Rebuild with:
+#   node src/build.mjs <password>
+src/
+extracted/
+out.txt
+*.pdf
+node_modules/
+.DS_Store

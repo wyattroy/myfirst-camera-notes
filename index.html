@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="A private document for the MyFirst team.">
+  <meta property="og:title" content="Notes for MyFirst">
+  <meta property="og:description" content="A private document. Password required.">
+  <meta property="og:type" content="article">
+  <meta name="theme-color" content="#FDFCFA">
+  <title>Notes for MyFirst — Wyatt Roy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231A1A18'/><rect x='7' y='11' width='18' height='4' rx='1.5' fill='%23FDFCFA'/><rect x='9' y='16' width='14' height='9' rx='1' fill='%23FDFCFA' opacity='.55'/></svg>">
+</head>
+<body class="locked">
+
+  <!-- ================= PASSWORD GATE ================= -->
+  <div id="gate">
+    <div class="gate-grain" aria-hidden="true"></div>
+    <div class="gate-card" id="gate-card">
+      <p class="gate-eyebrow"><span class="led" aria-hidden="true"></span> Private document</p>
+      <h1>Notes for MyFirst</h1>
+      <p class="gate-sub">Feedback, feature requests, and design ideas for the Insta 20, written for the MyFirst team. Enter the password to read it.</p>
+      <form class="gate-form" id="gate-form" autocomplete="off">
+        <label for="gate-input" class="visually-hidden">Password</label>
+        <input id="gate-input" type="password" placeholder="password" autocomplete="current-password" spellcheck="false" autofocus>
+        <button id="gate-submit" type="submit">Open</button>
+      </form>
+      <p class="gate-msg" id="gate-msg" role="status" aria-live="polite"></p>
+      <p class="gate-note">The contents of this page are encrypted. Nothing is readable, on this page or in its source, without the password.</p>
+    </div>
+  </div>
+
+  <!-- ================= DOCUMENT (injected after unlock) ================= -->
+  <div id="doc-root"></div>
+
+  <script src="payload.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var gate = document.getElementById('gate');
+    var card = document.getElementById('gate-card');
+    var form = document.getElementById('gate-form');
+    var input = document.getElementById('gate-input');
+    var submit = document.getElementById('gate-submit');
+    var msg = document.getElementById('gate-msg');
+    var root = document.getElementById('doc-root');
+    var SS_KEY = 'myfirst-notes-key';
+
+    function b64ToBytes(b64) {
+      var bin = atob(b64);
+      var out = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+
+    function say(text) {
+      msg.textContent = text;
+      msg.classList.toggle('show', !!text);
+    }
+
+    async function decrypt(password) {
+      var p = window.__PAYLOAD;
+      var enc = new TextEncoder();
+      var material = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+      var key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: b64ToBytes(p.salt), iterations: p.iter, hash: 'SHA-256' },
+        material,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+      var plain = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: b64ToBytes(p.iv) },
+        key,
+        b64ToBytes(p.ct)
+      );
+      return new TextDecoder().decode(plain);
+    }
+
+    function unlock(html, animate) {
+      root.innerHTML = html;
+      document.body.classList.remove('locked');
+      gate.classList.add('is-open');
+      root.classList.add('is-visible');
+      window.setTimeout(function () { gate.remove(); }, 1400);
+      initDocument(animate);
+    }
+
+    async function attempt(password, animate) {
+      submit.disabled = true;
+      say('');
+      try {
+        var html = await decrypt(password);
+        try { sessionStorage.setItem(SS_KEY, password); } catch (e) {}
+        unlock(html, animate);
+        return true;
+      } catch (e) {
+        submit.disabled = false;
+        return false;
+      }
+    }
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var pw = input.value.trim();
+      if (!pw) return;
+      var ok = await attempt(pw, true);
+      if (!ok) {
+        say('That password did not work. Try again.');
+        card.classList.remove('shake');
+        void card.offsetWidth;
+        card.classList.add('shake');
+        input.select();
+      }
+    });
+
+    input.addEventListener('input', function () { say(''); });
+
+    if (!window.isSecureContext || !window.crypto || !crypto.subtle) {
+      say('This page needs a secure (https) connection to decrypt.');
+      submit.disabled = true;
+    } else {
+      var saved = null;
+      try { saved = sessionStorage.getItem(SS_KEY); } catch (e) {}
+      if (saved) { attempt(saved, false); }
+    }
+
+    /* ============ Document behaviour, runs after unlock ============ */
+    function initDocument(animate) {
+      var nav = document.getElementById('main-nav');
+      var fill = document.getElementById('progress-fill');
+      var links = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
+      var sections = links
+        .map(function (a) { return document.querySelector(a.getAttribute('href')); })
+        .filter(Boolean);
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function onScroll() {
+        var y = window.scrollY || document.documentElement.scrollTop;
+        if (nav) nav.classList.toggle('scrolled', y > 24);
+        var max = document.documentElement.scrollHeight - window.innerHeight;
+        if (fill) fill.style.width = (max > 0 ? Math.min(100, (y / max) * 100) : 0) + '%';
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      onScroll();
+
+      /* Reveal on scroll */
+      var targets = document.querySelectorAll('.reveal');
+      if (reduce || !('IntersectionObserver' in window)) {
+        Array.prototype.forEach.call(targets, function (el) { el.classList.add('in'); });
+      } else {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in');
+              io.unobserve(entry.target);
+            }
+          });
+        }, { rootMargin: '0px 0px -12% 0px', threshold: 0.06 });
+        Array.prototype.forEach.call(targets, function (el) { io.observe(el); });
+      }
+
+      /* Active nav link */
+      if ('IntersectionObserver' in window && sections.length) {
+        var spy = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            links.forEach(function (a) {
+              a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id);
+            });
+          });
+        }, { rootMargin: '-40% 0px -55% 0px' });
+        sections.forEach(function (s) { spy.observe(s); });
+      }
+
+      /* Feed the print out of the printer */
+      var printFig = document.querySelector('.hero-print');
+      if (printFig) {
+        if (reduce || !animate) {
+          printFig.classList.add('is-printing');
+          if (reduce) {
+            var paper = printFig.querySelector('.print-paper');
+            if (paper) paper.style.transform = 'none';
+          }
+        } else {
+          window.requestAnimationFrame(function () {
+            window.setTimeout(function () { printFig.classList.add('is-printing'); }, 260);
+          });
+        }
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
