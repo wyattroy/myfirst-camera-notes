@@ -83,22 +83,22 @@
       return new TextDecoder().decode(plain);
     }
 
-    function unlock(html, animate) {
+    function unlock(html) {
       root.innerHTML = html;
       document.body.classList.remove('locked');
       gate.classList.add('is-open');
       root.classList.add('is-visible');
       window.setTimeout(function () { gate.remove(); }, 1400);
-      initDocument(animate);
+      initDocument();
     }
 
-    async function attempt(password, animate) {
+    async function attempt(password) {
       submit.disabled = true;
       say('');
       try {
         var html = await decrypt(password);
         try { sessionStorage.setItem(SS_KEY, password); } catch (e) {}
-        unlock(html, animate);
+        unlock(html);
         return true;
       } catch (e) {
         submit.disabled = false;
@@ -110,7 +110,7 @@
       e.preventDefault();
       var pw = input.value.trim();
       if (!pw) return;
-      var ok = await attempt(pw, true);
+      var ok = await attempt(pw);
       if (!ok) {
         say('That password did not work. Try again.');
         card.classList.remove('shake');
@@ -128,11 +128,11 @@
     } else {
       var saved = null;
       try { saved = sessionStorage.getItem(SS_KEY); } catch (e) {}
-      if (saved) { attempt(saved, false); }
+      if (saved) { attempt(saved); }
     }
 
     /* ============ Document behaviour, runs after unlock ============ */
-    function initDocument(animate) {
+    function initDocument() {
       var nav = document.getElementById('main-nav');
       var fill = document.getElementById('progress-fill');
       var links = Array.prototype.slice.call(document.querySelectorAll('.nav-links a'));
@@ -180,21 +180,6 @@
         sections.forEach(function (s) { spy.observe(s); });
       }
 
-      /* Feed the print out of the printer */
-      var printFig = document.querySelector('.hero-print');
-      if (printFig) {
-        if (reduce || !animate) {
-          printFig.classList.add('is-printing');
-          if (reduce) {
-            var paper = printFig.querySelector('.print-paper');
-            if (paper) paper.style.transform = 'none';
-          }
-        } else {
-          window.requestAnimationFrame(function () {
-            window.setTimeout(function () { printFig.classList.add('is-printing'); }, 260);
-          });
-        }
-      }
     }
   })();
   </script>
